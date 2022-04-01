@@ -1,0 +1,203 @@
+Table booking :-
+The table booking contains an entry for every booking made at the hotel. A booking is made by one guest - even though
+more than one person may be staying we do not record the details of other guests in the same room. 
+In normal operation the table includes both past and future bookings.
++------------+--------------+---------+----------+-----------+---------------------+--------+--------------+
+| booking_id | booking_date | room_no | guest_id | occupants | room_type_requested | nights | arrival_time |
++------------+--------------+---------+----------+-----------+---------------------+--------+--------------+
+|       5001 | 2016-11-03   |     101 |     1027 |         1 | single              |      7 | 13:00        |
+|       5002 | 2016-11-03   |     102 |     1179 |         1 | double              |      2 | 18:00        |
+|       5003 | 2016-11-03   |     103 |     1106 |         2 | double              |      2 | 21:00        |
+|       5004 | 2016-11-03   |     104 |     1238 |         1 | double              |      3 | 22:00        |
++------------+--------------+---------+----------+-----------+---------------------+--------+--------------+
+
+Table room:-
+Rooms are either single, double, twin or family.
++-----+-----------+---------------+
+| id  | room_type | max_occupancy |
++-----+-----------+---------------+
+| 101 | single    |             1 |
+| 102 | double    |             2 |
+| 103 | double    |             2 |
+| 104 | double    |             2 |
+| 105 | family    |             3 |
++-----+-----------+---------------+
+
+Table rate:-
+Rooms are charged per night, the amount charged depends on the "room type requested" value of the booking and 
+the number of people staying:
++-----------+-----------+--------+
+| room_type | occupancy | amount |
++-----------+-----------+--------+
+| double    |         1 |  56.00 |
+| double    |         2 |  72.00 |
+| family    |         1 |  56.00 |
+| family    |         2 |  72.00 |
+| family    |         3 |  84.00 |
+| single    |         1 |  48.00 |
+| twin      |         1 |  50.00 |
+| twin      |         2 |  72.00 |
++-----------+-----------+--------+
+
+Easy Query:-
+
+1.Guest 1183. Give the booking_date and the number of nights for guest 1183.
+
+SELECT
+booking_date,nights
+FROM booking
+WHERE
+guest_id = 1183;
++--------------+--------+
+| booking_date | nights |
++--------------+--------+
+| 2016-11-27   |      5 |
++--------------+--------+
+
+2.When do they get here? List the arrival time and the first and last names for all guests due to 
+arrive on 2016-11-05, order the output by time of arrival
+
+SELECT booking.arrival_time,guest.first_name,guest.last_name
+FROM  booking
+JOIN guest ON (booking.guest_id = guest.id)
+WHERE booking_date='2016-11-05'
+ORDER BY booking.arrival_time;
++--------------+------------+-----------+
+| arrival_time | first_name | last_name |
++--------------+------------+-----------+
+| 14:00        | Lisa       | Nandy     |
+| 15:00        | Jack       | Dromey    |
+| 16:00        | Mr Andrew  | Tyrie     |
+| 21:00        | James      | Heappey   |
+| 22:00        | Justin     | Tomlinson |
++--------------+------------+-----------+
+
+3.Look up daily rates. Give the daily rate that should be paid for bookings with ids 5152, 5165, 5154 and 5295. 
+Include booking id, room type, number of occupants and the amount.
+
+SELECT  booking_id , room_type_requested , occupants , amount
+FROM booking
+JOIN rate
+ON (booking.occupants = rate.occupancy
+AND booking.room_type_requested = rate.room_type)
+WHERE
+booking.booking_id = 5152
+OR booking.booking_id = 5154
+OR booking.booking_id = 5295;
+
++------------+---------------------+-----------+--------+
+| booking_id | room_type_requested | occupants | amount |
++------------+---------------------+-----------+--------+
+|       5152 | double              |         2 |  72.00 |
+|       5154 | double              |         1 |  56.00 |
+|       5295 | family              |         3 |  84.00 |
++------------+---------------------+-----------+--------+
+
+4.Who’s in 101? Find who is staying in room 101 on 2016-12-03, 
+include first name, last name and address.
+
+SELECT first_name,last_name,address
+FROM  guest
+JOIN booking
+ON (booking.guest_id = guest.id)
+WHERE
+booking.room_no = 101
+AND booking.booking_date = '2016-12-03';
+
++------------+-----------+-------------+
+| first_name | last_name | address     |
++------------+-----------+-------------+
+| Graham     | Evans     | Weaver Vale |
++------------+-----------+-------------+
+
+5.How many bookings, how many nights? For guests 1185 and 1270 show the number of bookings made 
+and the total number of nights. Your output should include the guest id and the total number of 
+bookings and the total number of nights.
+
+SELECT
+guest_id,
+COUNT(nights) as 'Count of nights',
+sum(nights) as 'Sum of Night'
+FROM booking
+WHERE
+guest_id = 1185
+OR guest_id = 1270
+GROUP BY guest_id;
+
++----------+---------------+-------------+
+| guest_id | COUNT(nights) | SUM(nights) |
++----------+---------------+-------------+
+|     1185 |             3 |           8 |
+|     1270 |             2 |           3 |
++----------+---------------+-------------+
+
+Medium Query:-
+
+6.Ruth Cadbury. Show the total amount payable by guest Ruth Cadbury for her room bookings. 
+You should JOIN to the rate table using room_type_requested and occupants.
+
+SELECT SUM(booking.nights * rate.amount) as 'SUM(nights*amount)'
+FROM booking
+JOIN rate
+ON (booking.occupants = rate.occupancy
+AND booking.room_type_requested = rate.room_type)
+JOIN
+guest
+ON (guest.id = booking.guest_id)
+WHERE
+guest.first_name = 'Ruth'
+AND guest.last_name = 'Cadbury';
+
++--------------------+
+| SUM(nights*amount) |
++--------------------+
+|             552.00 |
++--------------------+
+
+7.Including Extras. Calculate the total bill for booking 5346 including extras.
+
++-------------+
+| SUM(amount) |
++-------------+
+|      118.56 |
++-------------+
+
+8.Edinburgh Residents. For every guest who has the word “Edinburgh” in their address show the total 
+number of nights booked. Be sure to include 0 for those guests who have never had a booking. 
+Show last name, first name, address and number of nights. Order by last name then first name.
+
++-----------+------------+---------------------------+--------+
+| last_name | first_name | address                   | nights |
++-----------+------------+---------------------------+--------+
+| Brock     | Deidre     | Edinburgh North and Leith |      0 |
+| Cherry    | Joanna     | Edinburgh South West      |      0 |
+| Murray    | Ian        | Edinburgh South           |     13 |
+| Sheppard  | Tommy      | Edinburgh East            |      0 |
+| Thomson   | Michelle   | Edinburgh West            |      3 |
++-----------+------------+---------------------------+--------+
+
+9.How busy are we? For each day of the week beginning 2016-11-25 show the number of bookings starting that day. Be sure to show all the days of the week in the correct order.
+
+SELECT booking.booking_date, COUNT(*) AS arrivals
+FROM booking
+WHERE booking.booking_date BETWEEN '2016-11-25' AND '2016-12-1'
+GROUP BY booking.booking_date;
++------------+----------+
+|Booking_date| arrivals |
++------------+----------+
+| 2016-11-25 |        7 |
+| 2016-11-26 |        8 |
+| 2016-11-27 |       12 |
+| 2016-11-28 |        7 |
+| 2016-11-29 |       13 |
+| 2016-11-30 |        6 |
+| 2016-12-01 |        7 |
++------------+----------+
+
+10.How many guests? Show the number of guests in the hotel on the night of 2016-11-21. Include all occupants who checked in that day but not those who checked out.
+
++----------------+
+| SUM(occupants) |
++----------------+
+|             39 |
++----------------+
